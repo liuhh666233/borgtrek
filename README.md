@@ -9,4 +9,4 @@ Helps to keep you on trek ^-^ with your borg backup repositories.
 - REST-API for direct control via automation
 
 ***
-WIP: Just started
+WIP: Just started, not ready for production
