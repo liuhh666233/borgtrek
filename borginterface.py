@@ -13,7 +13,7 @@ class borgBackup(object):
     q = queue.Queue()
     repository = dict()
     
-    def __init__(self, tag, sink source):
+    def __init__(self, tag, sink, source):
         self.repository['tag'] = tag
         self.repository['sink'] = sink
         self.repository['source'] = source
