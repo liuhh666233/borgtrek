@@ -2,6 +2,39 @@ import os, sys, select, subprocess, logging, threading, time
 import queue
 import json
 from pathlib import Path
+import re
+
+class borgHelper(object):
+    q = queue.Queue()
+    repository = dict()
+    
+    def __init__(self, sink):
+        self.repository['sink'] = sink
+        logging.info(f"Setting up sink as {sink}")
+
+    def listTags(self):
+        listTagsThreadInst = threading.Thread(target=self.listTagsThread)
+        listTagsThreadInst.runThread = True
+        listTagsThreadInst.start()
+
+        return listTagsThreadInst
+
+    def listTagsThread(self):
+        t = threading.currentThread()
+
+        logging.info(f"Listing Tags of {self.repository['sink']}")
+
+        output = subprocess.check_output(['/usr/bin/borg', 'list', '--log-json', self.repository['sink']], stderr=subprocess.PIPE)
+
+        outputList = output.decode().split('\n')
+
+        for item in outputList:
+            if item == '':
+                continue
+            x = re.search(r"(?P<tag>\d*)", item)
+            tag = x.group('tag')
+            self.q.put(tag)
+
 
 class borgBackup(object):
         
@@ -13,7 +46,7 @@ class borgBackup(object):
     q = queue.Queue()
     repository = dict()
     
-    def __init__(self, tag, sink, source):
+    def __init__(self, tag, sink, source, skipCount = False):
         self.repository['tag'] = tag
         logging.info(f"Setting up instance with tag {tag}")
 
@@ -23,9 +56,10 @@ class borgBackup(object):
         self.repository['source'] = source
         logging.info(f"Setting up source as {source}")
 
-        self.countFiles()
-        numOfFiles = self.repository['total']
-        logging.info(f"Found {numOfFiles} files")
+        if not skipCount:
+            self.countFiles()
+            numOfFiles = self.repository['total']
+            logging.info(f"Found {numOfFiles} files")
 
 
     def getInfo(self):
@@ -36,10 +70,10 @@ class borgBackup(object):
         self.repository['total'] = len(self.files)
 
     def runBackup(self):
-        self.backupThread = threading.Thread(target=runBackup, args=(1,))
+        self.backupThread = threading.Thread(target=runBackup)
         self.backupThread.runThread = True
 
-        self.publishThread = threading.Thread(target=self.publishThread, args=(2,))
+        self.publishThread = threading.Thread(target=self.publishThread)
         self.publishThread.runThread = True
 
         self.publishThread.start()
