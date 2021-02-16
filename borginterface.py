@@ -15,20 +15,38 @@ class borgBackup(object):
     
     def __init__(self, tag, sink, source):
         self.repository['tag'] = tag
+        logging.info(f"Setting up instance with tag {tag}")
+
         self.repository['sink'] = sink
+        logging.info(f"Setting up sink as {sink}")
+
         self.repository['source'] = source
+        logging.info(f"Setting up source as {source}")
 
         self.countFiles()
+        numOfFiles = self.repository['total']
+        logging.info(f"Found {numOfFiles} files")
 
-    def getProgres(self):
+
+    def getInfo(self):
         return self.repository
 
-    def countFiles(self)
+    def countFiles(self):
         self.files = list(Path(self.repository['source']).rglob("*"))
         self.repository['total'] = len(self.files)
-        logging.info(f"Found {len(self.files)} files")
 
     def runBackup(self):
+        self.backupThread = threading.Thread(target=runBackup, args=(1,))
+        self.backupThread.runThread = True
+
+        self.publishThread = threading.Thread(target=self.publishThread, args=(2,))
+        self.publishThread.runThread = True
+
+        self.publishThread.start()
+        self.backupThread.start()
+
+
+    def runBackupThread(self):
         t = threading.currentThread()
 
         logging.info(f"Starting Backup of {self.repository['source']} to {self.repository['sink']} with tag {self.repository['tag']}")
@@ -48,7 +66,7 @@ class borgBackup(object):
 
         logging.info("Thread %s: finishing", name)
 
-    def publish(self, name):
+    def publishThread(self, name):
         t = threading.currentThread()
         
         logging.info("Thread %s: starting", name)

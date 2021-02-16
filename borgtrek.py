@@ -24,28 +24,31 @@ backups['pictures']['sink'] = '/media/veracrypt2/pictures'
 backups['documents']['source'] = '/media/veracrypt1/documents'
 backups['documents']['sink'] = '/media/veracrypt2/documents'
 
-backups = dict()
 
-@app.route('/status/<tag>')
-def getStatus(tag):
-    return backups[tag]
-
-@app.route('/setup/<tag>')
-def setup(tag):
-    if backup.get(tag) is not None:
-        print('Backup tag already exists')
-        return
+@app.route('/status/<media>/<tag>')
+def getStatus(media,tag):
+    if backups.get(media) is not None:
+        if backups[media].get(tag) is not None:
+            return backups[media][tag]
+        else:
+            return "This tag does not exist"
     else:
-        backups[tag] = dict()
+        return "This media does not exist"
+
+@app.route('/setup/<media>/<tag>')
+def setup(media,tag):
+    if backups.get(media) is not None:
+        if backups[media].get(tag) is not None:
+            return backups[media][tag]
+        else:
+            backups[media][tag] = borgBackup(tag, backups[media]['sink'], backups[media]['source'])
+            return tag
+    else:
+        return "This media does not exist"
     
-    backups[tag]['thread'] = threading.Thread(target=runBackup, args=(1,))
-    backups[tag]['thread'].runThread = True
-
-    return backups[tag]
-
 @app.route('/start/<tag>')
 def start(tag):
-    if backup.get(tag) is not None:
+    if backups.get(tag) is not None:
         backups[tag]['thread'].start()
         return "success"
     else:
@@ -66,34 +69,8 @@ if __name__ == "__main__":
 
     logging.basicConfig(format=format, level=logging.INFO, datefmt="%H:%M:%S")
 
-    logging.info("Main    : before creating thread")
-
-    # backupThread = threading.Thread(target=runBackup, args=(1,))
-    # backupThread.runThread = True
-
-    publishThread = threading.Thread(target=publish, args=(2,))
-    publishThread.runThread = True
-
-
-    logging.info("Main    : before running thread")
-
-    publishThread.start()
 
     # backupThread.start()
 
     app.run(host='192.168.1.114', port=8020)
 
-    logging.info("Main    : wait for the thread to finish")
-
-    # backupThread.join()
-
-    logging.info("Main    : Backup Thread joined")
-
-    publishThread.runThread = False
-
-    publishThread.join()
-
-    logging.info("Main    : Publish Thread joined")
-
-
-    logging.info("Main    : all done")
