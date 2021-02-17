@@ -42,7 +42,6 @@ class borgBackup(object):
     # tag = '201221'
     # sink = '/media/veracrypt2/movies'
     # source = '/media/veracrypt1/movies'
-
     
     def __init__(self, tag, sink, source, skipCount = False):
         self.q = queue.Queue()
@@ -72,7 +71,9 @@ class borgBackup(object):
         self.repository['total'] = len(self.files)
 
     def runBackup(self):
-        self.backupThread = threading.Thread(target=runBackup)
+        self.countFiles()
+        
+        self.backupThread = threading.Thread(target=self.runBackupThread)
         self.backupThread.runThread = True
 
         self.publishThread = threading.Thread(target=self.publishThread)
@@ -87,7 +88,8 @@ class borgBackup(object):
 
         logging.info(f"Starting Backup of {self.repository['source']} to {self.repository['sink']} with tag {self.repository['tag']}")
 
-        listProcess = subprocess.Popen(['/usr/bin/borg', 'create', '--repository', '--stats', '--log-json', sink+'::'+tag, source], stderr=subprocess.PIPE)
+        cmd = ['/usr/bin/borg', 'create', '--stats', '--log-json', self.repository['sink']+'::'+self.repository['tag'], self.repository['source']]
+        listProcess = subprocess.Popen(cmd, stderr=subprocess.PIPE)
 
         # listProcess = subprocess.Popen(['/usr/bin/borg', 'list', '--log-json', sink], stderr=subprocess.PIPE)
         listPoll = select.poll()
@@ -100,12 +102,10 @@ class borgBackup(object):
                 out = os.read(fd, 1024)
                 self.q.put(out.decode().replace('\n',''))
 
-        logging.info("Thread %s: finishing", name)
 
-    def publishThread(self, name):
+    def publishThread(self):
         t = threading.currentThread()
         
-        logging.info("Thread %s: starting", name)
 
         while(getattr(t, "runThread", False)):
             while(self.q.empty()):
@@ -114,7 +114,13 @@ class borgBackup(object):
             qPt = self.q.get()
 
             if qPt != "":
-                j = json.loads(qPt)
+                try:
+                    logging.info(qPt)
+
+                    j = json.loads(qPt)
+                except(Exception):
+                    self.q.task_done()
+                    continue
 
                 if "archive_repository" in j["type"]:
                     # print("path" + j["path"])
@@ -133,5 +139,4 @@ class borgBackup(object):
 
             self.q.task_done()
 
-        logging.info("Thread %s: finishing", name)
 

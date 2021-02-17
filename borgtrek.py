@@ -37,7 +37,7 @@ def findTags():
             if backups[media]["tags"].get(tag) is not None:
                 continue
 
-            logging.info(f"Found tag {tag} in {media}")
+            logging.info(f"Found tag {tag} in {media}. Setting up borg instance, but don't counting files")
 
             backups[media]["tags"][tag] = borgBackup(tag, backups[media]['sink'], backups[media]['source'], True)
             # findTagsHelper.q.task_done()
@@ -61,7 +61,7 @@ def list():
 @app.route('/status/<media>/<tag>')
 def getStatus(media,tag):
     if backups.get(media) is not None:
-        if backups[media].get(tag) is not None:
+        if backups[media]['tags'].get(tag) is not None:
             if backups[media]['tags'][tag] is not None:
                 logging.info(f"Tag exists, returning info")
 
@@ -76,26 +76,32 @@ def getStatus(media,tag):
 @app.route('/setup/<media>/<tag>')
 def setup(media,tag):
     if backups.get(media) is not None:
-        if backups[media].get(tag) is not None:
+        if backups[media]['tags'].get(tag) is not None:
             logging.info(f"Tag exists, counting files...")
 
             backups[media]['tags'][tag].countFiles()
-            return backups[media]['tags'][tag].getInfo()
+            return getStatus(media,tag)
         else:
-            logging.info(f"Tag does not exists, setting up borg instance")
+            logging.info(f"Tag does not exists, setting up borg instance and counting files")
 
             backups[media]['tags'][tag] = borgBackup(tag, backups[media]['sink'], backups[media]['source'])
-            return backups[media]['tags'][tag].getInfo()
+            return getStatus(media,tag)
     else:
         return "This media does not exist"
     
-@app.route('/start/<tag>')
-def start(tag):
-    if backups.get(tag) is not None:
-        backups[tag]['thread'].start()
-        return "success"
+@app.route('/start/<media>/<tag>')
+def start(media,tag):
+    if backups.get(media) is not None:
+        if backups[media]['tags'].get(tag) is not None:
+            logging.info(f"Tag exists, starting backup")
+
+            backups[media]['tags'][tag].runBackup()
+
+            return "Started Backup process"
+        else:
+            return f"Tag does not exist. Please run 'setup/{media}/{tag}' first"
     else:
-        print('Tag does not exist. Call setup first')
+        return "This media does not exist"
 
 @app.route('/kill')
 def kill():
