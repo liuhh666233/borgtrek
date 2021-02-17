@@ -14,6 +14,7 @@ backups['movies'] = dict()
 backups['music'] = dict()
 # backups['pictures'] = dict()
 backups['documents'] = dict()
+backups['test'] = dict()
 
 backups['movies']['source'] = '/media/veracrypt1/movies'
 backups['movies']['sink'] = '/media/veracrypt2/movies'
@@ -23,6 +24,8 @@ backups['music']['sink'] = '/media/veracrypt2/music'
 # backups['pictures']['sink'] = '/media/veracrypt2/pictures'
 backups['documents']['source'] = '/media/veracrypt1/documents'
 backups['documents']['sink'] = '/media/veracrypt2/documents'
+backups['test']['source'] = '/media/veracrypt1/source'
+backups['test']['sink'] = '/media/veracrypt2/source'
 
 def findTags():
     for media, mediaDict in backups.items():
@@ -42,7 +45,11 @@ def findTags():
             backups[media]["tags"][tag] = borgBackup(tag, backups[media]['sink'], backups[media]['source'], True)
             # findTagsHelper.q.task_done()
 
-        
+@app.route('/')
+def root():
+    return "Start with '/list'"
+
+
 @app.route('/list')
 def list():
     tagDict = dict()
