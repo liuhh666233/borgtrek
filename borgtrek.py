@@ -110,8 +110,8 @@ def start(media,tag):
     else:
         return "This media does not exist"
 
-@app.route('/await/<media>/<tag>')
-def list(media,tag):
+@app.route('/awaitProcess/<media>/<tag>')
+def awaitProcess(media,tag):
     if backups.get(media) is not None:
         if backups[media]['tags'].get(tag) is not None:
             logging.info(f"Tag exists, Awaiting finished backup")
@@ -139,8 +139,6 @@ if __name__ == "__main__":
 
     logging.basicConfig(format=format, level=logging.INFO, datefmt="%H:%M:%S")
 
-
-    # backupThread.start()
     findTags()
 
     app.run(host='192.168.1.114', port=8020)
