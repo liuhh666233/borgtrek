@@ -30,14 +30,16 @@ def findTags():
         findTagsHelperThread = findTagsHelper.listTags()
         findTagsHelperThread.join()
 
+        backups[media]["tags"] = dict()
+
         while(not findTagsHelper.q.empty()):
             tag = findTagsHelper.q.get()
-            if backups[media].get(tag) is not None:
+            if backups[media]["tags"].get(tag) is not None:
                 continue
 
             logging.info(f"Found tag {tag} in {media}")
 
-            backups[media][tag] = borgBackup(tag, backups[media]['sink'], backups[media]['source'], True)
+            backups[media]["tags"][tag] = borgBackup(tag, backups[media]['sink'], backups[media]['source'], True)
             # findTagsHelper.q.task_done()
 
         
@@ -47,8 +49,12 @@ def list():
 
     for media, mediaDict in backups.items():
         tagDict[media] = dict()
-        for tagName, _ in mediaDict.items():
-            tagDict[media][tagName] = tagName
+        tagDict[media]['sink'] = mediaDict['sink']
+        tagDict[media]['source'] = mediaDict['source']
+        tagDict[media]['tags'] = []
+
+        for tagName, _ in mediaDict['tags'].items():
+            tagDict[media]['tags'].append(tagName)
 
     return tagDict
 
@@ -56,10 +62,10 @@ def list():
 def getStatus(media,tag):
     if backups.get(media) is not None:
         if backups[media].get(tag) is not None:
-            if backups[media][tag] is not None:
+            if backups[media]['tags'][tag] is not None:
                 logging.info(f"Tag exists, returning info")
 
-                return backups[media][tag].getInfo()
+                return backups[media]['tags'][tag].getInfo()
             else:
                 return "This tag has no running backup"
         else:
@@ -73,13 +79,13 @@ def setup(media,tag):
         if backups[media].get(tag) is not None:
             logging.info(f"Tag exists, counting files...")
 
-            backups[media][tag].countFiles()
-            return backups[media][tag].getInfo()
+            backups[media]['tags'][tag].countFiles()
+            return backups[media]['tags'][tag].getInfo()
         else:
             logging.info(f"Tag does not exists, setting up borg instance")
 
-            backups[media][tag] = borgBackup(tag, backups[media]['sink'], backups[media]['source'])
-            return backups[media][tag].getInfo()
+            backups[media]['tags'][tag] = borgBackup(tag, backups[media]['sink'], backups[media]['source'])
+            return backups[media]['tags'][tag].getInfo()
     else:
         return "This media does not exist"
     
