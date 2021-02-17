@@ -1,6 +1,6 @@
 # Borgtrek
 
-Helps to keep you on trek ^-^ with your borg backup repositories.
+Helps to keep you on trek ^-^ with your [BorgBackup](https://www.borgbackup.org/) repositories.
 
 **Features**
 - Flask server for remote access
