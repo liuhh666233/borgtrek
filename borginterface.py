@@ -43,9 +43,12 @@ class borgBackup(object):
     # sink = '/media/veracrypt2/movies'
     # source = '/media/veracrypt1/movies'
     
+    
     def __init__(self, tag, sink, source, skipCount = False):
         self.backupThread = threading.Thread(target=self.runBackupThread)
         self.publishThread = threading.Thread(target=self.publishThread)
+
+        self.backupRunning = False
 
         self.q = queue.Queue()
         
@@ -72,7 +75,7 @@ class borgBackup(object):
         return self.repository
 
     def countFiles(self):
-        self.files = list(Path(self.repository['source']).rglob("*"))
+        self.files = list(Path(self.repository['source']).rglob("*.*"))
         self.repository['total'] = len(self.files)
 
     def runBackup(self):
@@ -82,19 +85,27 @@ class borgBackup(object):
         self.publishThread.runThread = True
 
         self.publishThread.start()
+
         self.backupThread.start()
 
     def awaitFinishBackupThread(self):
-        self.backupThread.join()
-        self.publishThread.runThread = False
+        if self.backupRunning:
+            self.backupThread.join()
+            self.publishThread.runThread = False
 
-        self.publishThread.join()
+            self.publishThread.join()
 
-        logging.info(f"Finished Backup of {self.repository['source']} to {self.repository['sink']} with tag {self.repository['tag']}")
+            logging.info(f"Finished Backup of {self.repository['source']} to {self.repository['sink']} with tag {self.repository['tag']}")
 
+        else:
+            self.publishThread.runThread = False
+
+            logging.info(f"Finished Backup of {self.repository['source']} to {self.repository['sink']} with tag {self.repository['tag']}")
 
     def runBackupThread(self):
         t = threading.currentThread()
+
+        self.backupRunning = True
 
         logging.info(f"Starting Backup of {self.repository['source']} to {self.repository['sink']} with tag {self.repository['tag']}")
 
@@ -112,6 +123,7 @@ class borgBackup(object):
                 out = os.read(fd, 1024)
                 self.q.put(out.decode().replace('\n',''))
 
+        self.backupRunning = False
 
     def publishThread(self):
         t = threading.currentThread()
@@ -141,9 +153,19 @@ class borgBackup(object):
 
                 elif "repository_message" in j["type"]:
                     logging.info("path" + str(j["time"]))
+                    
+                elif "progress_message" in j["type"]:
+                    logging.info(j["finished"])
+
+                elif "progress_percent" in j["type"]:
+                    logging.info(j["finished"])
+
+                elif "log_message" in j["type"]:
+                    logging.info(j["message"])
+
 
                 else:
-                    logging.info(j)
+                    logging.info(j["type"])
                     
 
             self.q.task_done()

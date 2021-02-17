@@ -110,6 +110,20 @@ def start(media,tag):
     else:
         return "This media does not exist"
 
+@app.route('/await/<media>/<tag>')
+def list(media,tag):
+    if backups.get(media) is not None:
+        if backups[media]['tags'].get(tag) is not None:
+            logging.info(f"Tag exists, Awaiting finished backup")
+
+            backups[media]['tags'][tag].awaitFinishBackupThread()
+
+            return "Finished Backup process"
+        else:
+            return f"Tag does not exist. Please run 'setup/{media}/{tag}' first"
+    else:
+        return "This media does not exist"
+
 @app.route('/kill')
 def kill():
     func = request.environ.get('werkzeug.server.shutdown')
