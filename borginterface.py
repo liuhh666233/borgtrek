@@ -43,10 +43,12 @@ class borgBackup(object):
     # sink = '/media/veracrypt2/movies'
     # source = '/media/veracrypt1/movies'
 
-    q = queue.Queue()
-    repository = dict()
     
     def __init__(self, tag, sink, source, skipCount = False):
+        self.q = queue.Queue()
+        
+        self.repository = dict()
+        
         self.repository['tag'] = tag
         logging.info(f"Setting up instance with tag {tag}")
 

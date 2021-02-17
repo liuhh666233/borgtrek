@@ -41,6 +41,16 @@ def findTags():
             # findTagsHelper.q.task_done()
 
         
+@app.route('/list')
+def list():
+    tagDict = dict()
+
+    for media, mediaDict in backups.items():
+        tagDict[media] = dict()
+        for tagName, _ in mediaDict.items():
+            tagDict[media][tagName] = tagName
+
+    return tagDict
 
 @app.route('/status/<media>/<tag>')
 def getStatus(media,tag):
