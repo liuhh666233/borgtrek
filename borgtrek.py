@@ -49,6 +49,11 @@ def findTags():
 def root():
     return "Start with '/list'"
 
+@app.route('/updateTags')
+def updateTags():
+    findTags()
+
+    return "Done. Call /list"
 
 @app.route('/list')
 def list():
