@@ -23,8 +23,8 @@ class borgHelper(object):
         t = threading.currentThread()
 
         logging.info(f"Listing Tags of {self.repository['sink']}")
-
-        output = subprocess.check_output(['/usr/bin/sudo', '/usr/bin/borg', 'list', '--log-json', self.repository['sink']], stderr=subprocess.PIPE)
+        #'/usr/bin/sudo', 
+        output = subprocess.check_output(['/usr/bin/borg', 'list', '--log-json', self.repository['sink']], stderr=subprocess.PIPE)
 
         print(output.decode())
         outputList = output.decode().split('\n')
