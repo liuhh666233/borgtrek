@@ -4,12 +4,13 @@ import json
 from pathlib import Path
 import re
 
+
 class borgHelper(object):
     q = queue.Queue()
     repository = dict()
-    
+
     def __init__(self, sink):
-        self.repository['sink'] = sink
+        self.repository["sink"] = sink
         logging.info(f"Setting up sink as {sink}")
 
     def listTags(self):
@@ -23,64 +24,66 @@ class borgHelper(object):
         t = threading.currentThread()
 
         logging.info(f"Listing Tags of {self.repository['sink']}")
-        #'/usr/bin/sudo', 
-        output = subprocess.check_output(['/usr/bin/borg', 'list', '--log-json', self.repository['sink']], stderr=subprocess.PIPE)
+        #'/usr/bin/sudo',
+        # TODO:--log-json 需要更新为 --json
+        output = subprocess.check_output(
+            ["/usr/bin/borg", "list", "--log-json", self.repository["sink"]],
+            stderr=subprocess.PIPE,
+        )
 
         print(output.decode())
-        outputList = output.decode().split('\n')
+        outputList = output.decode().split("\n")
         for item in outputList:
-            if item == '':
+            if item == "":
                 continue
             x = re.search(r"(?P<tag>\d*)", item)
-            tag = x.group('tag')
+            tag = x.group("tag")
             self.q.put(tag)
 
 
 class borgBackup(object):
-        
+
     runBackupScript = "/home/stroblme/Documents/borgBackup.sh"
     # tag = '201221'
     # sink = '/media/veracrypt2/movies'
     # source = '/media/veracrypt1/movies'
-    
-    
-    def __init__(self, tag, sink, source, skipCount = False):
+
+    def __init__(self, tag, sink, source, skipCount=False):
         self.backupThread = threading.Thread(target=self.runBackupThread)
         self.publishThread = threading.Thread(target=self.publishThread)
 
         self.backupRunning = False
 
         self.q = queue.Queue()
-        
+
         self.repository = dict()
-        
-        self.repository['tag'] = tag
+
+        self.repository["tag"] = tag
         logging.info(f"Setting up instance with tag {tag}")
 
-        self.repository['sink'] = sink
+        self.repository["sink"] = sink
         logging.info(f"Setting up sink as {sink}")
 
-        self.repository['source'] = source
+        self.repository["source"] = source
         logging.info(f"Setting up source as {source}")
 
         if not skipCount:
             self.countFiles()
-            numOfFiles = self.repository['total']
+            numOfFiles = self.repository["total"]
             logging.info(f"Found {numOfFiles} files")
 
-        self.repository['processed'] = 0
-
+        self.repository["processed"] = 0
 
     def getInfo(self):
         return self.repository
 
     def countFiles(self):
-        self.files = list(Path(self.repository['source']).rglob("*.*"))
-        self.repository['total'] = len(self.files)
+        self.files = list(Path(self.repository["source"]).rglob("*.*"))
+        self.repository["total"] = len(self.files)
 
     def runBackup(self):
         self.countFiles()
-        
+
         self.backupThread.runThread = True
         self.publishThread.runThread = True
 
@@ -95,21 +98,35 @@ class borgBackup(object):
 
             self.publishThread.join()
 
-            logging.info(f"Finished Backup of {self.repository['source']} to {self.repository['sink']} with tag {self.repository['tag']}")
+            logging.info(
+                f"Finished Backup of {self.repository['source']} to {self.repository['sink']} with tag {self.repository['tag']}"
+            )
 
         else:
             self.publishThread.runThread = False
 
-            logging.info(f"Finished Backup of {self.repository['source']} to {self.repository['sink']} with tag {self.repository['tag']}")
+            logging.info(
+                f"Finished Backup of {self.repository['source']} to {self.repository['sink']} with tag {self.repository['tag']}"
+            )
 
     def runBackupThread(self):
         t = threading.currentThread()
 
         self.backupRunning = True
 
-        logging.info(f"Starting Backup of {self.repository['source']} to {self.repository['sink']} with tag {self.repository['tag']}")
+        logging.info(
+            f"Starting Backup of {self.repository['source']} to {self.repository['sink']} with tag {self.repository['tag']}"
+        )
 
-        cmd = ['/usr/bin/borg', 'create', '--progress', '--stats', '--log-json', self.repository['sink']+'::'+self.repository['tag'], self.repository['source']]
+        cmd = [
+            "/usr/bin/borg",
+            "create",
+            "--progress",
+            "--stats",
+            "--log-json",
+            self.repository["sink"] + "::" + self.repository["tag"],
+            self.repository["source"],
+        ]
         listProcess = subprocess.Popen(cmd, stderr=subprocess.PIPE)
 
         # listProcess = subprocess.Popen(['/usr/bin/borg', 'list', '--log-json', sink], stderr=subprocess.PIPE)
@@ -117,20 +134,19 @@ class borgBackup(object):
         listPoll.register(listProcess.stderr)
 
         out = -1
-        while(out != b'' and getattr(t, "runThread", False)):
+        while out != b"" and getattr(t, "runThread", False):
             rlist = listPoll.poll()
             for fd, event in rlist:
                 out = os.read(fd, 1024)
-                self.q.put(out.decode().replace('\n',''))
+                self.q.put(out.decode().replace("\n", ""))
 
         self.backupRunning = False
 
     def publishThread(self):
         t = threading.currentThread()
-        
 
-        while(getattr(t, "runThread", False)):
-            while(self.q.empty()):
+        while getattr(t, "runThread", False):
+            while self.q.empty():
                 time.sleep(0.1)
 
             qPt = self.q.get()
@@ -138,7 +154,7 @@ class borgBackup(object):
             if qPt != "":
                 try:
                     j = json.loads(qPt)
-                except(Exception):
+                except (Exception):
                     logging.info(qPt)
                     self.q.task_done()
                     continue
@@ -148,12 +164,12 @@ class borgBackup(object):
                     # print("o:" + str(j["original_size"]))
                     # print("c:" + str(j["compressed_size"]))
                     # print("d:" + str(j["deduplicated_size"]))
-                    self.repository['processed'] = j["nfiles"]
+                    self.repository["processed"] = j["nfiles"]
                     # print(f"Processing {nfiles} of {len(files)}")
 
                 elif "repository_message" in j["type"]:
                     logging.info("path" + str(j["time"]))
-                    
+
                 elif "progress_message" in j["type"]:
                     logging.info(j["finished"])
 
@@ -163,11 +179,7 @@ class borgBackup(object):
                 elif "log_message" in j["type"]:
                     logging.info(j["message"])
 
-
                 else:
                     logging.info(j["type"])
-                    
 
             self.q.task_done()
-
-

@@ -10,74 +10,83 @@ app = Flask(__name__)
 app.config.from_object(__name__)
 
 backups = dict()
-backups['movies'] = dict()
-backups['music'] = dict()
+backups["movies"] = dict()
+backups["music"] = dict()
 # backups['pictures'] = dict()
-backups['documents'] = dict()
-backups['test'] = dict()
+backups["documents"] = dict()
+backups["test"] = dict()
 
-backups['movies']['source'] = '/media/veracrypt1/movies'
-backups['movies']['sink'] = '/media/veracrypt2/movies'
-backups['music']['source'] = '/media/veracrypt1/music'
-backups['music']['sink'] = '/media/veracrypt2/music'
+backups["movies"]["source"] = "/media/veracrypt1/movies"
+backups["movies"]["sink"] = "/media/veracrypt2/movies"
+backups["music"]["source"] = "/media/veracrypt1/music"
+backups["music"]["sink"] = "/media/veracrypt2/music"
 # backups['pictures']['source'] = '/media/veracrypt1/pictures'
 # backups['pictures']['sink'] = '/media/veracrypt2/pictures'
-backups['documents']['source'] = '/media/veracrypt1/documents'
-backups['documents']['sink'] = '/media/veracrypt2/documents'
-backups['test']['source'] = '/media/veracrypt1/source'
-backups['test']['sink'] = '/media/veracrypt2/source'
+backups["documents"]["source"] = "/media/veracrypt1/documents"
+backups["documents"]["sink"] = "/media/veracrypt2/documents"
+backups["test"]["source"] = "/media/veracrypt1/source"
+backups["test"]["sink"] = "/media/veracrypt2/source"
+
 
 def findTags():
     for media, mediaDict in backups.items():
-        findTagsHelper = borgHelper(mediaDict['sink'])
+        findTagsHelper = borgHelper(mediaDict["sink"])
         findTagsHelperThread = findTagsHelper.listTags()
         findTagsHelperThread.join()
 
         backups[media]["tags"] = dict()
 
-        while(not findTagsHelper.q.empty()):
+        while not findTagsHelper.q.empty():
             tag = findTagsHelper.q.get()
             if backups[media]["tags"].get(tag) is not None:
                 continue
 
-            logging.info(f"Found tag {tag} in {media}. Setting up borg instance, but don't counting files")
+            logging.info(
+                f"Found tag {tag} in {media}. Setting up borg instance, but don't counting files"
+            )
 
-            backups[media]["tags"][tag] = borgBackup(tag, backups[media]['sink'], backups[media]['source'], True)
+            backups[media]["tags"][tag] = borgBackup(
+                tag, backups[media]["sink"], backups[media]["source"], True
+            )
             # findTagsHelper.q.task_done()
 
-@app.route('/')
+
+@app.route("/")
 def root():
     return "Start with '/list'"
 
-@app.route('/updateTags')
+
+@app.route("/updateTags")
 def updateTags():
     findTags()
 
     return "Done. Call /list"
 
-@app.route('/list')
+
+@app.route("/list")
 def list():
     tagDict = dict()
 
     for media, mediaDict in backups.items():
         tagDict[media] = dict()
-        tagDict[media]['sink'] = mediaDict['sink']
-        tagDict[media]['source'] = mediaDict['source']
-        tagDict[media]['tags'] = []
+        tagDict[media]["sink"] = mediaDict["sink"]
+        tagDict[media]["source"] = mediaDict["source"]
+        tagDict[media]["tags"] = []
 
-        for tagName, _ in mediaDict['tags'].items():
-            tagDict[media]['tags'].append(tagName)
+        for tagName, _ in mediaDict["tags"].items():
+            tagDict[media]["tags"].append(tagName)
 
     return tagDict
 
-@app.route('/status/<media>/<tag>')
-def getStatus(media,tag):
+
+@app.route("/status/<media>/<tag>")
+def getStatus(media, tag):
     if backups.get(media) is not None:
-        if backups[media]['tags'].get(tag) is not None:
-            if backups[media]['tags'][tag] is not None:
+        if backups[media]["tags"].get(tag) is not None:
+            if backups[media]["tags"][tag] is not None:
                 logging.info(f"Tag exists, returning info")
 
-                return backups[media]['tags'][tag].getInfo()
+                return backups[media]["tags"][tag].getInfo()
             else:
                 return "This tag has no running backup"
         else:
@@ -85,29 +94,35 @@ def getStatus(media,tag):
     else:
         return "This media does not exist"
 
-@app.route('/setup/<media>/<tag>')
-def setup(media,tag):
+
+@app.route("/setup/<media>/<tag>")
+def setup(media, tag):
     if backups.get(media) is not None:
-        if backups[media]['tags'].get(tag) is not None:
+        if backups[media]["tags"].get(tag) is not None:
             logging.info(f"Tag exists, counting files...")
 
-            backups[media]['tags'][tag].countFiles()
-            return getStatus(media,tag)
+            backups[media]["tags"][tag].countFiles()
+            return getStatus(media, tag)
         else:
-            logging.info(f"Tag does not exists, setting up borg instance and counting files")
+            logging.info(
+                f"Tag does not exists, setting up borg instance and counting files"
+            )
 
-            backups[media]['tags'][tag] = borgBackup(tag, backups[media]['sink'], backups[media]['source'])
-            return getStatus(media,tag)
+            backups[media]["tags"][tag] = borgBackup(
+                tag, backups[media]["sink"], backups[media]["source"]
+            )
+            return getStatus(media, tag)
     else:
         return "This media does not exist"
-    
-@app.route('/start/<media>/<tag>')
-def start(media,tag):
+
+
+@app.route("/start/<media>/<tag>")
+def start(media, tag):
     if backups.get(media) is not None:
-        if backups[media]['tags'].get(tag) is not None:
+        if backups[media]["tags"].get(tag) is not None:
             logging.info(f"Tag exists, starting backup")
 
-            backups[media]['tags'][tag].runBackup()
+            backups[media]["tags"][tag].runBackup()
 
             return "Started Backup process"
         else:
@@ -115,13 +130,14 @@ def start(media,tag):
     else:
         return "This media does not exist"
 
-@app.route('/awaitProcess/<media>/<tag>')
-def awaitProcess(media,tag):
+
+@app.route("/awaitProcess/<media>/<tag>")
+def awaitProcess(media, tag):
     if backups.get(media) is not None:
-        if backups[media]['tags'].get(tag) is not None:
+        if backups[media]["tags"].get(tag) is not None:
             logging.info(f"Tag exists, Awaiting finished backup")
 
-            backups[media]['tags'][tag].awaitFinishBackupThread()
+            backups[media]["tags"][tag].awaitFinishBackupThread()
 
             return "Finished Backup process"
         else:
@@ -129,14 +145,14 @@ def awaitProcess(media,tag):
     else:
         return "This media does not exist"
 
-@app.route('/kill')
+
+@app.route("/kill")
 def kill():
-    func = request.environ.get('werkzeug.server.shutdown')
+    func = request.environ.get("werkzeug.server.shutdown")
     if func is None:
-        raise RuntimeError('Not running with the Werkzeug Server')
+        raise RuntimeError("Not running with the Werkzeug Server")
     func()
     return "Shutting down..."
-
 
 
 if __name__ == "__main__":
@@ -146,5 +162,4 @@ if __name__ == "__main__":
 
     findTags()
 
-    app.run(host='192.168.1.114', port=8020)
-
+    app.run(host="192.168.1.114", port=8020)
